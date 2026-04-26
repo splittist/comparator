@@ -49,9 +49,17 @@ function startCompare() {
   emit('compare', result);
 }
 
-function getFileName(index: number | null): string {
-  if (index === null) return '';
-  return props.files[index]?.name ?? '';
+function parseSelectValue(event: Event): number | null {
+  const value = (event.target as HTMLSelectElement).value;
+  return value === '' ? null : Number(value);
+}
+
+function onOldFileChange(pair: PairEntry, event: Event) {
+  pair.oldFileIndex = parseSelectValue(event);
+}
+
+function onNewFileChange(pair: PairEntry, event: Event) {
+  pair.newFileIndex = parseSelectValue(event);
 }
 </script>
 
@@ -75,7 +83,7 @@ function getFileName(index: number | null): string {
             <label>Old (base) document</label>
             <select
               :value="pair.oldFileIndex ?? ''"
-              @change="pair.oldFileIndex = ($event.target as HTMLSelectElement).value === '' ? null : Number(($event.target as HTMLSelectElement).value)"
+              @change="onOldFileChange(pair, $event)"
             >
               <option value="">-- Select file --</option>
               <option
@@ -95,7 +103,7 @@ function getFileName(index: number | null): string {
             <label>New (revised) document</label>
             <select
               :value="pair.newFileIndex ?? ''"
-              @change="pair.newFileIndex = ($event.target as HTMLSelectElement).value === '' ? null : Number(($event.target as HTMLSelectElement).value)"
+              @change="onNewFileChange(pair, $event)"
             >
               <option value="">-- Select file --</option>
               <option
