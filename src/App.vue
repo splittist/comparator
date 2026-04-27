@@ -58,7 +58,7 @@ const canProceed = computed(() => uploadedFiles.value.length >= 2);
     <header class="app-header">
       <div class="header-inner">
         <h1 class="app-title">
-          <span class="logo">🔀</span> DOCX Comparator
+          <span class="logo">🔀</span> Comparator
         </h1>
         <p class="app-subtitle">Compare Word documents and review tracked changes</p>
       </div>
