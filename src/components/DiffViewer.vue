@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, onUnmounted } from 'vue';
+import { nextTick, onUnmounted, ref, watch } from 'vue';
 import type { DiffResult } from '../lib/types';
 
 const props = defineProps<{
@@ -9,6 +9,25 @@ const props = defineProps<{
 const containerRef = ref<HTMLDivElement | null>(null);
 let superdocInstance: unknown = null;
 
+function toDocxBlob(value: unknown): Blob | null {
+  if (!value) return null;
+  if (value instanceof Blob) return value;
+
+  if (value instanceof ArrayBuffer) {
+    return new Blob([value], {
+      type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    });
+  }
+
+  if (ArrayBuffer.isView(value)) {
+    return new Blob([value as unknown as BlobPart], {
+      type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    });
+  }
+
+  return null;
+}
+
 async function mountViewer(blob: Blob) {
   if (!containerRef.value) return;
 
@@ -17,16 +36,7 @@ async function mountViewer(blob: Blob) {
 
   try {
     const { SuperDoc } = await import('superdoc');
-    const { default: superDocStyles } = await import('superdoc/style.css?inline').catch(() => ({
-      default: '',
-    }));
-
-    if (superDocStyles && !document.querySelector('#superdoc-styles')) {
-      const style = document.createElement('style');
-      style.id = 'superdoc-styles';
-      style.textContent = superDocStyles;
-      document.head.appendChild(style);
-    }
+    await import('superdoc/style.css');
 
     const sd = new SuperDoc({
       selector: containerRef.value,
@@ -36,6 +46,7 @@ async function mountViewer(blob: Blob) {
       },
       documentMode: 'viewing',
       modules: {
+        comments: false,
         trackChanges: { visible: true },
       },
     });
@@ -58,12 +69,24 @@ function destroyViewer() {
 
 watch(
   () => props.result,
-  (result) => {
-    if (result.status === 'done' && result.resultBlob) {
-      mountViewer(result.resultBlob);
+  async (result) => {
+    if (result.status !== 'done') {
+      destroyViewer();
+      return;
     }
+
+    const blob = toDocxBlob(result.resultBlob);
+    if (!blob) {
+      destroyViewer();
+      return;
+    }
+
+    // The viewer container is behind a v-else-if, so wait until this tick's
+    // DOM update before trying to mount SuperDoc.
+    await nextTick();
+    await mountViewer(blob);
   },
-  { immediate: true },
+  { immediate: true, flush: 'post' },
 );
 
 onUnmounted(() => {
@@ -71,8 +94,10 @@ onUnmounted(() => {
 });
 
 function downloadResult() {
-  if (!props.result.resultBlob) return;
-  const url = URL.createObjectURL(props.result.resultBlob);
+  const blob = toDocxBlob(props.result.resultBlob);
+  if (!blob) return;
+
+  const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
   const base = props.result.oldFileName.replace(/\.docx$/i, '');

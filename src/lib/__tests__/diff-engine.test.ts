@@ -180,4 +180,25 @@ describe('computeDiff', () => {
     expect(result.status).toBe('error');
     expect(result.error).toContain('Export failed');
   });
+
+  it('normalizes Uint8Array export output to Blob', async () => {
+    const { _mockEditor } = await import('superdoc/super-editor') as { _mockEditor: { exportDocx: ReturnType<typeof vi.fn> } };
+    _mockEditor.exportDocx.mockResolvedValueOnce(new Uint8Array([0x50, 0x4b, 0x03, 0x04]));
+
+    const computeDiff = await getComputeDiff();
+    const pair: ComparisonPair = {
+      id: 'pair-typed-array',
+      oldFile: makeFile('old.docx'),
+      newFile: makeFile('new.docx'),
+    };
+
+    const result = await computeDiff(pair);
+
+    expect(result.status).toBe('done');
+    expect(result.resultBlob).toBeInstanceOf(Blob);
+    expect(result.resultBlob?.size).toBe(4);
+    expect(result.resultBlob?.type).toBe(
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    );
+  });
 });

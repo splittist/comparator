@@ -2,6 +2,26 @@ import type { ComparisonPair, DiffResult } from './types';
 
 export type { ComparisonPair, DiffResult };
 
+function normalizeDocxOutputToBlob(output: unknown): Blob {
+  if (output instanceof Blob) {
+    return output;
+  }
+
+  if (output instanceof ArrayBuffer) {
+    return new Blob([output], {
+      type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    });
+  }
+
+  if (ArrayBuffer.isView(output)) {
+    return new Blob([output], {
+      type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    });
+  }
+
+  throw new Error('Unsupported DOCX export format returned by SuperDoc.');
+}
+
 /**
  * Computes a diff between two DOCX files and returns a DiffResult containing
  * a Blob with tracked changes applied.
@@ -26,10 +46,15 @@ export async function computeDiff(pair: ComparisonPair): Promise<DiffResult> {
     // Dynamic import to avoid loading superdoc at module parse time
     const { Editor, getStarterExtensions } = await import('superdoc/super-editor');
 
+    const editorConfig = {
+      extensions: getStarterExtensions(),
+      user: { name: 'Comparator' },
+    };
+
     // Open both documents in headless mode
     const [oldEditor, newEditor] = await Promise.all([
-      Editor.open(pair.oldFile, { extensions: getStarterExtensions() }),
-      Editor.open(pair.newFile, { extensions: getStarterExtensions() }),
+      Editor.open(pair.oldFile, editorConfig),
+      Editor.open(pair.newFile, editorConfig),
     ]);
 
     try {
@@ -42,8 +67,8 @@ export async function computeDiff(pair: ComparisonPair): Promise<DiffResult> {
       // Apply the diff as tracked changes to the "old" document
       oldEditor.doc.diff.apply({ diff: diffPayload }, { changeMode: 'tracked' });
 
-      // Export the result as a DOCX Blob
-      const resultBlob = await oldEditor.exportDocx();
+      // Export may return Blob or typed array depending on runtime/environment.
+      const resultBlob = normalizeDocxOutputToBlob(await oldEditor.exportDocx());
 
       return {
         ...base,
