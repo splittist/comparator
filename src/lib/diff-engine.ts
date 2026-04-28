@@ -58,6 +58,12 @@ export async function computeDiff(pair: ComparisonPair): Promise<DiffResult> {
     ]);
 
     try {
+      // Accept all pre-existing tracked changes in both documents before diffing
+      await Promise.all([
+        oldEditor.doc.trackChanges.decide({ decision: 'accept', target: { scope: 'all' } }),
+        newEditor.doc.trackChanges.decide({ decision: 'accept', target: { scope: 'all' } }),
+      ]);
+
       // Capture a snapshot of the "new" document state
       const newSnapshot = newEditor.doc.diff.capture();
 
