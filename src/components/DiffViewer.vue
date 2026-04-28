@@ -245,4 +245,27 @@ function downloadResult() {
   min-height: 400px;
   width: 100%;
 }
+
+.superdoc-container :deep(.superdoc-layout) {
+  --sd-tracked-changes-insert-text: #1d4ed8;
+  --sd-tracked-changes-insert-background: #dbeafe;
+  --sd-tracked-changes-insert-decoration-line: underline;
+  --sd-tracked-changes-insert-decoration-thickness: 2px;
+  --sd-tracked-changes-insert-underline-offset: 1px;
+  --sd-tracked-changes-delete-text: #dc2626;
+  --sd-tracked-changes-delete-decoration-thickness: 1px;
+}
+
+.superdoc-container :deep(.superdoc-layout .track-insert-dec.highlighted) {
+  background-color: #dbeafe !important;
+  color: #1d4ed8 !important;
+  text-decoration-line: underline !important;
+  text-decoration-style: double !important;
+  text-decoration-color: #1d4ed8 !important;
+}
+
+.superdoc-container :deep(.superdoc-layout .track-delete-dec.highlighted) {
+  color: #dc2626 !important;
+  text-decoration: line-through solid #dc2626 1px !important;
+}
 </style>
