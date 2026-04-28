@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
+import { buildDisambiguatedLabels } from '../lib/display-names';
 
 const emit = defineEmits<{
   'files-added': [files: File[]];
@@ -7,6 +8,7 @@ const emit = defineEmits<{
 
 const isDragging = ref(false);
 const files = ref<File[]>([]);
+const displayNames = computed(() => buildDisambiguatedLabels(files.value.map((file) => file.name), 56));
 
 function handleDrop(event: DragEvent) {
   isDragging.value = false;
@@ -81,7 +83,7 @@ function removeFile(index: number) {
     <ul v-if="files.length > 0" class="file-list">
       <li v-for="(file, idx) in files" :key="file.name + file.size" class="file-item">
         <span class="file-icon">📄</span>
-        <span class="file-name">{{ file.name }}</span>
+        <span class="file-name" :title="file.name">{{ displayNames[idx] }}</span>
         <span class="file-size">{{ (file.size / 1024).toFixed(1) }} KB</span>
         <button class="remove-btn" title="Remove file" @click="removeFile(idx)">✕</button>
       </li>
@@ -154,7 +156,7 @@ function removeFile(index: number) {
 
 .file-item {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 10px;
   padding: 8px 12px;
   background: white;
@@ -171,9 +173,9 @@ function removeFile(index: number) {
   flex: 1;
   font-weight: 500;
   color: #1e293b;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.25;
 }
 
 .file-size {

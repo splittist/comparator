@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
 import type { ComparisonPair } from '../lib/types';
+import { buildDisambiguatedLabels } from '../lib/display-names';
 
 const props = defineProps<{
   files: File[];
@@ -37,6 +38,10 @@ const canCompare = computed(() =>
   ),
 );
 
+const fileOptionLabels = computed(() =>
+  buildDisambiguatedLabels(props.files.map((file) => file.name), 56),
+);
+
 function startCompare() {
   const result: ComparisonPair[] = pairs.value
     .filter((p) => p.oldFileIndex !== null && p.newFileIndex !== null)
@@ -44,7 +49,9 @@ function startCompare() {
       id: p.id,
       oldFile: props.files[p.oldFileIndex!],
       newFile: props.files[p.newFileIndex!],
-      label: p.label || `${props.files[p.oldFileIndex!].name} → ${props.files[p.newFileIndex!].name}`,
+      label:
+        p.label ||
+        `${fileOptionLabels.value[p.oldFileIndex!]} -> ${fileOptionLabels.value[p.newFileIndex!]}`,
     }));
   emit('compare', result);
 }
@@ -92,7 +99,7 @@ function onNewFileChange(pair: PairEntry, event: Event) {
                 :value="fi"
                 :disabled="fi === pair.newFileIndex"
               >
-                {{ file.name }}
+                {{ fileOptionLabels[fi] }}
               </option>
             </select>
           </div>
@@ -112,7 +119,7 @@ function onNewFileChange(pair: PairEntry, event: Event) {
                 :value="fi"
                 :disabled="fi === pair.oldFileIndex"
               >
-                {{ file.name }}
+                {{ fileOptionLabels[fi] }}
               </option>
             </select>
           </div>

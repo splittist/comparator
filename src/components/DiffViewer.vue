@@ -1,10 +1,18 @@
 <script setup lang="ts">
-import { nextTick, onUnmounted, ref, watch } from 'vue';
+import { computed, nextTick, onUnmounted, ref, watch } from 'vue';
 import type { DiffResult } from '../lib/types';
+import { buildDisambiguatedLabels } from '../lib/display-names';
 
 const props = defineProps<{
   result: DiffResult;
 }>();
+
+const displayNames = computed(() =>
+  buildDisambiguatedLabels([props.result.oldFileName, props.result.newFileName], 40),
+);
+
+const oldDisplayName = computed(() => displayNames.value[0] ?? props.result.oldFileName);
+const newDisplayName = computed(() => displayNames.value[1] ?? props.result.newFileName);
 
 const containerRef = ref<HTMLDivElement | null>(null);
 let superdocInstance: unknown = null;
@@ -111,9 +119,9 @@ function downloadResult() {
   <div class="diff-viewer">
     <div class="viewer-header">
       <div class="viewer-title">
-        <span class="old-name">{{ result.oldFileName }}</span>
+        <span class="old-name" :title="result.oldFileName">{{ oldDisplayName }}</span>
         <span class="arrow">→</span>
-        <span class="new-name">{{ result.newFileName }}</span>
+        <span class="new-name" :title="result.newFileName">{{ newDisplayName }}</span>
       </div>
       <button
         v-if="result.status === 'done'"
@@ -167,19 +175,19 @@ function downloadResult() {
 .viewer-title {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 10px;
   font-size: 0.9rem;
-  overflow: hidden;
+  min-width: 0;
 }
 
 .old-name,
 .new-name {
   font-weight: 500;
   color: #1e293b;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  max-width: 200px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.25;
 }
 
 .arrow {
