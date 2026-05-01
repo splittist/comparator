@@ -51,6 +51,17 @@ async function onCompare(pairs: ComparisonPair[]) {
 }
 
 const canProceed = computed(() => uploadedFiles.value.length >= 2);
+const buildCommitShort = __APP_COMMIT_SHORT__;
+const buildCommitUrl =
+  __APP_COMMIT_FULL__ !== 'dev'
+    ? `https://github.com/splittist/comparator/commit/${__APP_COMMIT_FULL__}`
+    : '';
+const buildTooltip = computed(() => {
+  const details = [`commit: ${__APP_COMMIT_FULL__}`];
+  if (__APP_BRANCH__) details.push(`branch: ${__APP_BRANCH__}`);
+  if (__APP_DEPLOYMENT_ID__) details.push(`deploy: ${__APP_DEPLOYMENT_ID__}`);
+  return details.join(' | ');
+});
 </script>
 
 <template>
@@ -125,6 +136,20 @@ const canProceed = computed(() => uploadedFiles.value.length >= 2);
         </div>
       </section>
     </main>
+
+    <footer class="app-footer">
+      <a
+        v-if="buildCommitUrl"
+        class="build-stamp"
+        :href="buildCommitUrl"
+        :title="buildTooltip"
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        build {{ buildCommitShort }}
+      </a>
+      <span v-else class="build-stamp" :title="buildTooltip">build {{ buildCommitShort }}</span>
+    </footer>
   </div>
 </template>
 
@@ -294,5 +319,23 @@ const canProceed = computed(() => uploadedFiles.value.length >= 2);
   display: flex;
   flex-direction: column;
   gap: 24px;
+}
+
+.app-footer {
+  display: flex;
+  justify-content: flex-end;
+  padding: 10px 16px 14px;
+}
+
+.build-stamp {
+  text-decoration: none;
+  font-size: 0.72rem;
+  color: #94a3b8;
+  letter-spacing: 0.02em;
+  user-select: text;
+}
+
+a.build-stamp:hover {
+  color: #64748b;
 }
 </style>
