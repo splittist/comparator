@@ -201,4 +201,26 @@ describe('computeDiff', () => {
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     );
   });
+
+  it('continues diffing when pre-diff track-change cleanup throws', async () => {
+    const { _mockEditor } = await import('superdoc/super-editor') as {
+      _mockEditor: { doc: { trackChanges?: { decide: ReturnType<typeof vi.fn> } } };
+    };
+
+    _mockEditor.doc.trackChanges = {
+      decide: vi.fn().mockRejectedValue(new Error('Cannot read properties of undefined (reading isHeaderOrFooter)')),
+    };
+
+    const computeDiff = await getComputeDiff();
+    const pair: ComparisonPair = {
+      id: 'pair-track-cleanup-err',
+      oldFile: makeFile('old.docx'),
+      newFile: makeFile('new.docx'),
+    };
+
+    const result = await computeDiff(pair);
+
+    expect(result.status).toBe('done');
+    expect(result.resultBlob).toBeInstanceOf(Blob);
+  });
 });

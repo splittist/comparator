@@ -2,6 +2,29 @@ import type { ComparisonPair, DiffResult } from './types';
 
 export type { ComparisonPair, DiffResult };
 
+async function acceptAllTrackedChanges(editor: unknown): Promise<void> {
+  const maybeEditor = editor as {
+    doc?: {
+      trackChanges?: {
+        decide?: (args: { decision: 'accept'; target: { scope: 'all' } }) => Promise<unknown>;
+      };
+    };
+  };
+
+  const decide = maybeEditor.doc?.trackChanges?.decide;
+  if (typeof decide !== 'function') {
+    return;
+  }
+
+  try {
+    await decide({ decision: 'accept', target: { scope: 'all' } });
+  } catch (error) {
+    // Some DOCX structures can fail this pre-cleanup step in SuperDoc internals.
+    // Keep going so compare/apply can still produce a result.
+    console.warn('Pre-diff track change cleanup failed; proceeding without cleanup.', error);
+  }
+}
+
 function normalizeDocxOutputToBlob(output: unknown): Blob {
   if (output instanceof Blob) {
     return output;
@@ -58,11 +81,8 @@ export async function computeDiff(pair: ComparisonPair): Promise<DiffResult> {
     ]);
 
     try {
-      // Accept all pre-existing tracked changes in both documents before diffing
-      await Promise.all([
-        oldEditor.doc.trackChanges.decide({ decision: 'accept', target: { scope: 'all' } }),
-        newEditor.doc.trackChanges.decide({ decision: 'accept', target: { scope: 'all' } }),
-      ]);
+      // Best-effort cleanup: keep diffing even if this fails for complex docs.
+      await Promise.all([acceptAllTrackedChanges(oldEditor), acceptAllTrackedChanges(newEditor)]);
 
       // Capture a snapshot of the "new" document state
       const newSnapshot = newEditor.doc.diff.capture();
