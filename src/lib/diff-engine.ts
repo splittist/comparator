@@ -3,23 +3,24 @@ import type { ComparisonPair, DiffResult } from './types';
 export type { ComparisonPair, DiffResult };
 
 async function acceptAllTrackedChanges(editor: unknown): Promise<void> {
-  const maybeEditor = editor as {
-    doc?: {
-      trackChanges?: {
-        decide?: (args: { decision: 'accept'; target: { scope: 'all' } }) => Promise<unknown>;
-      };
-    };
-  };
-
-  const decide = maybeEditor.doc?.trackChanges?.decide;
-  if (typeof decide !== 'function') {
-    return;
-  }
+  const tc = (editor as { doc?: { trackChanges?: Record<string, unknown> } }).doc?.trackChanges;
+  if (!tc) return;
 
   try {
-    await decide({ decision: 'accept', target: { scope: 'all' } });
+    // Skip when there are no tracked changes. Calling decide on a document with
+    // no changes can trigger an internal SuperDoc header/footer traversal error.
+    const list = typeof tc['list'] === 'function'
+      ? (tc['list'] as () => { total: number })()
+      : undefined;
+    if (list !== undefined && list.total === 0) return;
+
+    // Call decide as a method of tc to preserve the correct `this` binding.
+    if (typeof tc['decide'] === 'function') {
+      await (tc['decide'] as (args: { decision: 'accept'; target: { scope: 'all' } }) => Promise<unknown>)
+        .call(tc, { decision: 'accept', target: { scope: 'all' } });
+    }
   } catch (error) {
-    // Some DOCX structures can fail this pre-cleanup step in SuperDoc internals.
+    // Some DOCX structures can still fail this pre-cleanup step.
     // Keep going so compare/apply can still produce a result.
     console.warn('Pre-diff track change cleanup failed; proceeding without cleanup.', error);
   }

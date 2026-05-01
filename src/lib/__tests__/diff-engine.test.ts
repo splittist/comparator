@@ -10,7 +10,11 @@ vi.mock('superdoc/super-editor', () => {
     compare: vi.fn().mockReturnValue(diffPayload),
     apply: vi.fn().mockReturnValue({ appliedOperations: 1 }),
   };
-  const mockDoc = { diff: mockDiffAdapter };
+  const mockTrackChanges = {
+    list: vi.fn().mockReturnValue({ total: 0 }),
+    decide: vi.fn().mockResolvedValue(undefined),
+  };
+  const mockDoc = { diff: mockDiffAdapter, trackChanges: mockTrackChanges };
   const mockEditor = {
     doc: mockDoc,
     exportDocx: vi.fn().mockResolvedValue(new Blob(['docx content'], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' })),
@@ -24,6 +28,7 @@ vi.mock('superdoc/super-editor', () => {
     getStarterExtensions: vi.fn().mockReturnValue([]),
     _mockEditor: mockEditor,
     _mockDiffAdapter: mockDiffAdapter,
+    _mockTrackChanges: mockTrackChanges,
   };
 });
 
@@ -202,12 +207,33 @@ describe('computeDiff', () => {
     );
   });
 
+  it('skips decide and succeeds when document has no tracked changes', async () => {
+    const { _mockTrackChanges } = await import('superdoc/super-editor') as {
+      _mockTrackChanges: { list: ReturnType<typeof vi.fn>; decide: ReturnType<typeof vi.fn> };
+    };
+    _mockTrackChanges.list.mockReturnValueOnce({ total: 0 });
+
+    const computeDiff = await getComputeDiff();
+    const pair: ComparisonPair = {
+      id: 'pair-no-changes',
+      oldFile: makeFile('old.docx'),
+      newFile: makeFile('new.docx'),
+    };
+
+    const result = await computeDiff(pair);
+
+    expect(result.status).toBe('done');
+    expect(result.resultBlob).toBeInstanceOf(Blob);
+    expect(_mockTrackChanges.decide).not.toHaveBeenCalled();
+  });
+
   it('continues diffing when pre-diff track-change cleanup throws', async () => {
     const { _mockEditor } = await import('superdoc/super-editor') as {
-      _mockEditor: { doc: { trackChanges?: { decide: ReturnType<typeof vi.fn> } } };
+      _mockEditor: { doc: { trackChanges?: { list: ReturnType<typeof vi.fn>; decide: ReturnType<typeof vi.fn> } } };
     };
 
     _mockEditor.doc.trackChanges = {
+      list: vi.fn().mockReturnValue({ total: 1 }),
       decide: vi.fn().mockRejectedValue(new Error('Cannot read properties of undefined (reading isHeaderOrFooter)')),
     };
 
